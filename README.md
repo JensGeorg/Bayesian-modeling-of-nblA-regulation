@@ -154,6 +154,14 @@ fit <- sampling(stan_model_fit,
 							   
 
 ```
+## Plot the fit to the data
+
+  ```R
+source("plot_fits_to_data.r")
+```
+
+<img src="fit.png" alt="Model Scheme" width="60%">
+
 
 ## Simulate *nblA* expression at different scenarios
 
