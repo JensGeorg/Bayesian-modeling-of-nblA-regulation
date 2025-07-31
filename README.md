@@ -157,6 +157,7 @@ fit <- sampling(stan_model_fit,
 ## Plot the fit to the data
 
   ```R
+load("fit.Rdata") # load the precomputed fit
 source("plot_fits_to_data.r")
 ```
 
