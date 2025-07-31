@@ -16,9 +16,9 @@ The Stan model `rna_dynamics.stan` implements a four-state ODE system:
 
 * R environment
 * Stan (`rstan` package)
-* Required R libraries: `ggplot2`, `dplyr`, `tidyr`, `deSolve`, `boot`, `ggsci`
+* Required R libraries: `ggplot2`, `dplyr`, `tidyr`, `deSolve`
 
-### Require R-packages
+### Required R-packages
 
 Install the necessary R packages.
 
@@ -153,7 +153,8 @@ fit <- sampling(stan_model_fit,
 )
 							   
 
-    ```
+```
+
 ## Scripts
 
 ### `stan/rna_dynamics.stan`
@@ -164,5 +165,5 @@ fit <- sampling(stan_model_fit,
 
 This script is for visualizing the model fit. It expects a fitted Stan object named `fit` to be available in the R environment.
 
-```R
+
 # R code for plot_fits_to_data.r goes here
