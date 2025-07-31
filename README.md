@@ -155,15 +155,15 @@ fit <- sampling(stan_model_fit,
 
 ```
 
-## Scripts
+## Simulate *nblA+ expression at different scenarios
 
-### `stan/rna_dynamics.stan`
+The script extracts the modeled parameters from the fit object and uses `deSolve` to simulate the *nblA* concentration in the WT, the Δas_nblA strain, the ΔnsrR1 strain and in heterocysts.
+Download the precomputed fit object fro
 
-(The cleaned Stan code you provided goes here.)
+  ```R
+load("fit.Rdata")
+source("simulate_nblA_expression.r")
 
-### `R/plot_fits_to_data.r`
-
-This script is for visualizing the model fit. It expects a fitted Stan object named `fit` to be available in the R environment.
+```
 
 
-# R code for plot_fits_to_data.r goes here
