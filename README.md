@@ -4,7 +4,7 @@ This repository contains a Stan model for fitting a system of ordinary different
 
 ## Model Description
 
-The Stan model `rna_dynamics.stan` implements a four-state ODE system:
+The Stan model implements a four-state ODE system:
 1.  `RNA_free`: Unbound nblA concentration.
 2.  `RNA_complex_sRNA`: nblA/NsrR1 complex concentration.
 3.  `asRNA_free`: Unbound as_nblA concentration.
