@@ -28,7 +28,7 @@ Install the necessary R packages.
 
 ### Usage
 
-Load the model the fiting data and run the modeling
+Load the model, define the fiting data and start the stan modeling
    ```R
 library(rstan)
 source("model.r")
