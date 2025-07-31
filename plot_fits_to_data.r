@@ -2,7 +2,6 @@ library(ggplot2)
 library(dplyr)
 library(rstan)
 library(tidyr)
-#library(boot)
 
 obs_times <- c(0, 6, 8, 12, 24)
 obs_RNA <- c(1, 11.23555901, 12.55334557, 14.32040113, 6.453134074)
