@@ -41,7 +41,7 @@ obs_asRNA       <- c(1, 1.180992661, 0.590496331, 0.726986259, 0.946057647)
 obs_sRNA        <- c(1, 0.271683716, 0.332171454, 0.320856474, 0.77916458)
 n_obs           <- length(obs_times)
 
-decay_obs_times <- c(0, 24)
+decay_obs_times <- c(0, 9)
 obs_RNA_decay   <- c(13.73, 4.4)
 n_decay_obs     <- length(decay_obs_times)
 
