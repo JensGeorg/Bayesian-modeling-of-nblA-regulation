@@ -1,178 +1,254 @@
 # Bayesian-modeling-of-nblA-regulation
 
-This repository contains a Stan model for fitting a system of ordinary differential equations (ODEs) that describe the dynamics of the *nblA* (RNA), as_nblA (asRNA), and NsrR1 (sRNA) regulatory system. The model is fitted to various experimental datasets, including microarray time-series data, Northern blot data, and RNA decay rates. The repository also includes R scripts to process the fitted model, visualize the results, and run new simulations for different biological scenarios.
+This repository contains a Stan model for fitting a system of ordinary differential equations (ODEs) that describe the dynamics of the *nblA* (RNA), as_nblA (asRNA), and NsrR1 (sRNA) regulatory system.
+
+The model utilizes a **Quasi-Steady-State Approximation (QSSA)** for the sRNA-mRNA complex and explicitly models **Transcriptional Interference (TI)** between the sense and antisense strands. The model is fitted to various experimental datasets, including RNA-seq ratios, microarray time-series, qPCR (Wild Type and Knockouts), and RNA decay rates using `cmdstanr`.
 
 ## Model Description
 
-The Stan model implements a four-state ODE system:
-1.  `RNA_free`: Unbound nblA concentration.
-2.  `RNA_complex_sRNA`: nblA/NsrR1 complex concentration.
-3.  `asRNA_free`: Unbound as_nblA concentration.
-4.  `sRNA_free`: Unbound NsrR1 concentration.
+The Stan model (`qssa_model.stan`) implements a 3-state ODE system with an algebraic constraint for the rapid equilibrium of the sRNA complex:
+
+1. ** (Total nblA RNA):** Tracks total RNA abundance (free + complexed).
+2. ** (Total NsrR1 sRNA):** Tracks total sRNA abundance.
+3. ** (Total as_nblA):** Tracks antisense RNA abundance.
+
+**Key Mechanisms:**
+
+* 
+**QSSA:** The concentration of the sRNA-mRNA complex () is calculated algebraically at each step using the mass balance and dissociation constant (), assuming the binding dynamics are faster than transcription/decay.
+
+
+* 
+**Transcriptional Interference (TI):** The synthesis of the sense strand is suppressed by the synthesis flux of the antisense strand (and vice versa) using a logistic interference function.
+
+
+* 
+**Leak Synthesis:** Accounts for basal transcription distinct from the main regulated flux. Resembles the very low basic transcription that can be measured using RNAseq. Likely prematurely terminated RNA fragments.
+
+
+* 
+**Time-Varying Synthesis:** Synthesis rates are modeled using linear interpolation between key timepoints (t=0, 9, 24) to capture dynamic regulation.
+
+
 
 ## Getting Started
 
 ### Prerequisites
 
-* R environment
-* Stan (`rstan` package)
-* Required R libraries: `ggplot2`, `dplyr`, `tidyr`, `deSolve`
+* **R environment**
+* **CmdStan** (via `cmdstanr`)
+* **Required R libraries:** `cmdstanr`, `posterior`, `ggplot2`
 
 ### Required R-packages
 
-Install the necessary R packages.
+Install the necessary R packages. Note that `cmdstanr` requires a working C++ toolchain.
 
-    ```R
-    install.packages(c("rstan", "ggplot2", "dplyr", "deSolve", "tidyr"))
-    ```
+```r
+install.packages(c("cmdstanr", "posterior", "ggplot2"))
+library(cmdstanr)
+check_cmdstan_toolchain()
+install_cmdstan()
+
+```
 
 ### Usage
 
-Load the model, define the fiting data and start the stan modeling
-   ```R
-library(rstan)
-source("model.r")
+The following script (`runmodel_final.R`) demonstrates how to load the data, compile the model, and run the Bayesian inference.
 
-# data
+```r
+library(cmdstanr)
+library(posterior)
+library(ggplot2)
 
-obs_times       <- c(0, 6, 8, 12, 24)
-obs_RNA         <- c(1, 11.23555901, 12.55334557, 14.32040113, 6.453134074)
-obs_asRNA       <- c(1, 1.180992661, 0.590496331, 0.726986259, 0.946057647)
-obs_sRNA        <- c(1, 0.271683716, 0.332171454, 0.320856474, 0.77916458)
-n_obs           <- length(obs_times)
+# 1. Compile the Stan model
+model <- cmdstan_model(
+  "qssa_model.stan",
+  cpp_options = list(stan_threads = FALSE),
+  stanc_options = list("O1"), # Optimization level
+  force_recompile = F
+)
 
-decay_obs_times <- c(0, 9)
-obs_RNA_decay   <- c(13.73, 4.4)
-n_decay_obs     <- length(decay_obs_times)
+# 2. Define Experimental Data
+# RNA-seq ratios
+RNA_t0 <- 19.9
+RNA_t9 <- 923
+asRNA_t0 <- 1152
+asRNA_t9 <- 1017
+sRNA_t0 <- 3098  # From dRNA-seq
+sRNA_t9 <- 742   # From dRNA-seq
 
-nb_times_srna_ko <- c(0, 2, 4, 6, 8)
-obs_RNA_nb_srna_ko <- c(1, 5.76018571, 9.76801526, 38.1105133, 46.8838844)
-n_obs_nb_srna_ko <- length(nb_times_srna_ko)
+obs_asRNA_RNA_ratio_t0 <- asRNA_t0 / RNA_t0  
+obs_sRNA_RNA_ratio_t0 <- sRNA_t0 / RNA_t0 
+obs_asRNA_RNA_ratio_t9 <- asRNA_t9 / RNA_t9  
 
-nb_times_wt1 <- c(0, 3, 6, 9, 12, 24)
-obs_RNA_nb_wt1 <- c(1, 9, 14, 19, 18, 7)
-n_obs_nb_wt1 <- length(nb_times_wt1)
 
-nb_times_wt2 <- c(0, 8, 24)
-obs_RNA_nb_wt2 <- c(1.0615e-11, 0.80544218, 1.30858618)
-n_obs_nb_wt2 <- length(nb_times_wt2)
-
-nb_times_asrna_ko <- c(0, 8, 24)
-obs_RNA_nb_asrna_ko <- c(1.82039604, 4.46959099, 3.34963486)
-n_obs_nb_asrna_ko <- length(nb_times_asrna_ko)
-
-k_off_lit_estimate <- 18000
-k_off_lower_bound <- 1080
-k_off_upper_bound <- 36000
-
-k_off_log_mean_lit_val <- log(k_off_lit_estimate)
-k_off_log_sd_lit_val <- (log(k_off_upper_bound) - log(k_off_lower_bound)) / (2 * qnorm(0.975))
-
-t0 <- 0
-
-y0_data <- c(10.96, 3, 117.91, 62.84)
-
-fix_y0 <- 0
-sRNA_strategy <- 2
-
-rna_ts          <- c(0, 9, 24)
-rna_vals_data   <- c(1, 10.88888889, 15.77777778)
-n_RNA           <- length(rna_ts)
-
-asrna_ts          <- c(0, 9, 24)
-asrna_vals_data   <- c(1, 1.180992661, 0.946057647) * 102.2222222
-n_asRNA           <- length(asrna_ts)
-
-srna_ts <- c(0, 6, 8, 12, 24)
-n_sRNA  <- length(srna_ts)
-
-L <- n_RNA + n_asRNA + n_sRNA
-
-kd_estimate_nls <- 117.4665
-ci_lower_nls <- 96.13608
-ci_upper_nls <- 143.16898
-
-z_score_95 <- qnorm(0.975)
-
-mu_log_Kd_prior_val <- mean(c(log(ci_lower_nls), log(ci_upper_nls)))
-sigma_log_Kd_prior_val <- (log(ci_upper_nls) - log(ci_lower_nls)) / (2 * z_score_95)
+#  Microarray (t > 0 only relative changes)
+microarray_times <- c(6, 8, 12, 24)
+obs_RNA_microarray <- c(11.24, 12.55, 14.32, 6.45)
+obs_sRNA_microarray <- c(0.272, 0.332, 0.321, 0.779)
+obs_asRNA_microarray <- c(1.181, 0.590, 0.727, 0.946)
 
 
 
+#  qPCR asRNA_KO: t9/t0 fold-change AND KO/WT ratio at t9
+qpcr_ko_t0 <- 1.82
+qpcr_ko_t9 <- 4.47  # Interpolated from t=8 data
+qpcr_wt_t9 <- 0.805
+
+obs_asrna_ko_fc_t9_t0 <- qpcr_ko_t9 / qpcr_ko_t0 
+obs_asrna_ko_wt_ratio_t9 <- qpcr_ko_t9 / qpcr_wt_t9  
+
+
+# 1. WT / sRNA_KO at t=6
+# NB1 Data: WT(t6)=14, sRNA_KO(t6)=38.1
+obs_ratio_wt_srna_ko_t6 <- 14 / 38.1
+
+# 2. asRNA_KO / WT at t=8
+# Data: asRNA_KO(8h)=4.47, WT(8h)=0.805
+obs_ratio_asrna_ko_wt_t8 <- 4.47 / 0.805
+
+# 3. asRNA_KO / WT at t=24
+# Data: asRNA_KO(24h)=3.35, WT(24h)=1.31
+obs_ratio_asrna_ko_wt_t24 <- 3.35 / 1.31
+
+# NB1 sRNA_KO: relative to t=2 
+# Original data: t=0,2,4,6,8 -> 1, 5.76, 9.77, 38.1, 46.9
+# Fold-change from t=2:
+nb1_srna_ko_times <- c(4, 6, 8) 
+nb1_srna_ko_fc_t2 <- 5.76  
+obs_RNA_srna_ko_fc_from_t2 <- c(9.77, 38.1, 46.9) / nb1_srna_ko_fc_t2  
+
+
+# NB1 WT: relative to t=3 
+# Original data: t=0,3,6,9,12,24 -> 1, 9, 14, 19, 18, 7
+# Fold-change from t=3:
+nb1_wt_times <- c(6, 9, 12, 24)
+nb1_wt_fc_t3 <- 9 
+obs_RNA_nb1_wt_fc_from_t3 <- c(14, 19, 18, 7) / nb1_wt_fc_t3  
+
+
+
+# Decay measurements 
+obs_RNA_decay <- c(13.73, 4.4)
+decay_times <- c(0, 9)
+
+
+# Decay ratio 
+obs_decay_ratio <- 1.5
+sigma_decay_ratio <- 0.15
+
+# GFP Reporter 
+f_RNA_9_data <- 10.88888889
+f_asRNA_9_data <- 120.7 
+f_asRNA_24_data <- 96.7 
+
+
+solver_times <- c(0.2,0.5,1,2, 3, 4, 6, 8, 9, 12,16, 24)
+n_solver <- length(solver_times)
+
+# Find indices for key timepoints
+get_time_idx <- function(t, times) which.min(abs(times - t))
+
+srna_ko_t2_idx <- get_time_idx(2, solver_times)
+wt_t3_idx <- get_time_idx(3, solver_times)
+
+microarray_time_idx <- sapply(microarray_times, get_time_idx, solver_times)
+nb1_srna_ko_time_idx <- sapply(nb1_srna_ko_times, get_time_idx, solver_times)
+nb1_wt_time_idx <- sapply(nb1_wt_times, get_time_idx, solver_times)
+decay_time_idx <- c(0, get_time_idx(9, solver_times))  # 0 = use y0, otherwise index
+
+
+# 3. Structure Data for Stan
 stan_data <- list(
-  n_obs             = n_obs,
-  obs_times         = obs_times,
-  obs_RNA           = obs_RNA,
-  obs_asRNA         = obs_asRNA,
-  obs_sRNA          = obs_sRNA,
-  n_decay_obs       = n_decay_obs,
-  decay_obs_times   = decay_obs_times,
-  obs_RNA_decay     = obs_RNA_decay,
-
-  n_obs_nb_wt1      = n_obs_nb_wt1,
-  nb_times_wt1      = nb_times_wt1,
-  obs_RNA_nb_wt1    = obs_RNA_nb_wt1,
-  n_obs_nb_srna_ko  = n_obs_nb_srna_ko,
-  nb_times_srna_ko  = nb_times_srna_ko,
-  obs_RNA_nb_srna_ko= obs_RNA_nb_srna_ko,
-  n_obs_nb_wt2      = n_obs_nb_wt2,
-  nb_times_wt2      = nb_times_wt2,
-  obs_RNA_nb_wt2    = obs_RNA_nb_wt2,
-  n_obs_nb_asrna_ko = n_obs_nb_asrna_ko,
-  nb_times_asrna_ko = nb_times_asrna_ko,
-  obs_RNA_nb_asrna_ko = obs_RNA_nb_asrna_ko,
-
-  fix_y0            = fix_y0,
-  y0_data           = y0_data,
-  t0                = t0,
-  sRNA_strategy     = sRNA_strategy,
-  n_RNA             = n_RNA,
-  rna_ts            = rna_ts,
-  n_asRNA           = n_asRNA,
-  asrna_ts          = asrna_ts,
-  n_sRNA            = n_sRNA,
-  srna_ts           = srna_ts,
-  L                 = L,
-  rna_vals_data     = rna_vals_data,
-  asrna_vals_data   = asrna_vals_data,
-
-  kd_srna_log_mean_prior = mu_log_Kd_prior_val,
-  kd_srna_log_sd_prior = sigma_log_Kd_prior_val,
+  n_solver = n_solver,
+  solver_times = solver_times,
+  t0 = 0,
   
-  k_off_log_mean_lit = k_off_log_mean_lit_val,
-  k_off_log_sd_lit = k_off_log_sd_lit_val
+  # RNA-seq ratios
+  obs_asRNA_RNA_ratio_t9 = obs_asRNA_RNA_ratio_t9,
+  
+  # Microarray
+  n_microarray = length(microarray_times),
+  microarray_time_idx = microarray_time_idx,
+  obs_RNA_microarray = obs_RNA_microarray,
+  obs_sRNA_microarray = obs_sRNA_microarray,
+  obs_asRNA_microarray = obs_asRNA_microarray,
+  
+  # qPCR asRNA_KO
+  obs_asrna_ko_fc_t9_t0 = obs_asrna_ko_fc_t9_t0,
+  obs_asrna_ko_wt_ratio_t9 = obs_asrna_ko_wt_ratio_t9,
+  
+  # t=0 Ratios RNAseq & dRNAseq
+  obs_asRNA_RNA_ratio_t0 = obs_asRNA_RNA_ratio_t0,
+  obs_sRNA_RNA_ratio_t0  = obs_sRNA_RNA_ratio_t0,
+  
+  # NB1 sRNA_KO (relative to t=2)
+  n_nb1_srna_ko = length(nb1_srna_ko_times),
+  nb1_srna_ko_time_idx = nb1_srna_ko_time_idx,
+  obs_RNA_srna_ko_fc_from_t2 = obs_RNA_srna_ko_fc_from_t2,
+  srna_ko_t2_idx = srna_ko_t2_idx,
+  
+  # NB1 WT (relative to t=3)
+  n_nb1_wt = length(nb1_wt_times),
+  nb1_wt_time_idx = nb1_wt_time_idx,
+  obs_RNA_nb1_wt_fc_from_t3 = obs_RNA_nb1_wt_fc_from_t3,
+  wt_t3_idx = wt_t3_idx,
+  
+  # Decay
+  n_decay_obs = 2,
+  decay_time_idx = decay_time_idx,
+  obs_RNA_decay = obs_RNA_decay,
+  
+  # Decay ratio
+  decay_ratio_time_idx = get_time_idx(9, solver_times),
+  obs_decay_ratio = obs_decay_ratio,
+  sigma_decay_ratio = sigma_decay_ratio,
+  
+  # GFP Reporter
+  f_RNA_9_data = f_RNA_9_data,
+  f_asRNA_9_data = f_asRNA_9_data,
+  f_asRNA_24_data = f_asRNA_24_data,
+  
+  obs_ratio_wt_srna_ko_t6 = obs_ratio_wt_srna_ko_t6,
+  obs_ratio_asrna_ko_wt_t8 = obs_ratio_asrna_ko_wt_t8,
+  obs_ratio_asrna_ko_wt_t24 = obs_ratio_asrna_ko_wt_t24
 )
 
-# run the model
-fit <- sampling(stan_model_fit,
-                data = stan_data,
-                iter = 30,
-                chains =4,
-                control = list(adapt_delta = 0.90,
-                max_treedepth = 14)
+
+# 4. Run Sampling
+fit <- model$sample(
+  data = stan_data,
+  chains = 8,
+  parallel_chains = 8,
+  iter_warmup = 2000,
+  iter_sampling = 2000,
+  refresh = 10,
+  adapt_delta = 0.95,
+  max_treedepth = 15,
+  seed = 42
 )
-							   
 
 ```
-## Plot the fit to the data
 
-  ```R
-load("fit.Rdata") # load the precomputed fit
-source("plot_fits_to_data.r")
-```
+---
 
-<img src="fit.png" alt="Model Scheme" width="60%">
+### Key Outputs
+
+The model generates posterior distributions for kinetic parameters and time-course trajectories:
+
+* 
+**Kinetic Parameters:** `Kd_sRNA` (Dissociation constant), `decay_R_free`, `decay_complex_sRNA`, `base_syn`.
 
 
-## Simulate *nblA* expression at different scenarios
+* 
+**Interference Parameters:** `term_rate_asR_on_RNA` (Efficiency of TI).
 
-The script extracts the modeled parameters from the fit object and uses `deSolve` to simulate the *nblA* concentration in the WT, the Δas_nblA strain, the ΔnsrR1 strain and in heterocysts.
-Download the precomputed fit object fro
 
-  ```R
-load("fit.Rdata") # load the precomputed fit
-source("simulate_nblA_expression.r")
+* 
+**Trajectories:** `RNA_wt_trajectory`, `RNA_asrna_ko_trajectory`.
 
-```
-<img src="nblA_simulations.png" alt="Model Scheme" width="60%">
 
+
+---
+
+**Next Step:** Would you like me to generate an R script to visualize the posterior trajectories for the WT vs. KO scenarios using the `fit` object?
