@@ -248,7 +248,3 @@ The model generates posterior distributions for kinetic parameters and time-cour
 **Trajectories:** `RNA_wt_trajectory`, `RNA_asrna_ko_trajectory`.
 
 
-
----
-
-**Next Step:** Would you like me to generate an R script to visualize the posterior trajectories for the WT vs. KO scenarios using the `fit` object?
