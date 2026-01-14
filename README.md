@@ -8,13 +8,13 @@ The model utilizes a **Quasi-Steady-State Approximation (QSSA)** for the sRNA-mR
 
 The Stan model (`qssa_model.stan`) implements a 3-state ODE system with an algebraic constraint for the rapid equilibrium of the sRNA complex:
 
-1. ** (Total nblA RNA):** Tracks total RNA abundance (free + complexed).
-2. ** (Total NsrR1 sRNA):** Tracks total sRNA abundance.
-3. ** (Total as_nblA):** Tracks antisense RNA abundance.
+1. **(Total nblA RNA):** Tracks total RNA abundance (free + complexed).
+2. **(Total NsrR1 sRNA):** Tracks total sRNA abundance.
+3. **(Total as_nblA):** Tracks antisense RNA abundance.
 
 **Key Mechanisms:**
 
-**QSSA:** The concentration of the sRNA-mRNA complex () is calculated algebraically at each step using the mass balance and dissociation constant (), assuming the binding dynamics are faster than transcription/decay.
+**QSSA:** The concentration of the sRNA-mRNA complex is calculated algebraically at each step using the mass balance and dissociation constant, assuming the binding dynamics are faster than transcription/decay.
 
 
 **Transcriptional Interference (TI):** The synthesis of the sense strand is suppressed by the synthesis flux of the antisense strand (and vice versa) using a logistic interference function.
@@ -23,7 +23,6 @@ The Stan model (`qssa_model.stan`) implements a 3-state ODE system with an algeb
 **Leak Synthesis:** Accounts for basal transcription distinct from the main regulated flux. Resembles the very low basic transcription that can be measured using RNAseq. Likely prematurely terminated RNA fragments.
 
 
-* 
 **Time-Varying Synthesis:** Synthesis rates are modeled using linear interpolation between key timepoints (t=0, 9, 24) to capture dynamic regulation.
 
 
@@ -34,7 +33,9 @@ The Stan model (`qssa_model.stan`) implements a 3-state ODE system with an algeb
 
 * **R environment**
 * **CmdStan** (via `cmdstanr`)
-* **Required R libraries:** `cmdstanr`, `posterior`, `ggplot2`
+* **Required R libraries for modelling:** `cmdstanr`, `posterior`, `ggplot2`
+* **Required R libraries for postprocessing:** `cmdstanr`, `posterior`, `ggplot2`, `dplyr`, `tidyr`, `gridExtra`, `grid`
+* **Required R libraries for simulation:** `deSolve`
 
 ### Required R-packages
 
