@@ -249,3 +249,10 @@ source(plot_and_extract_posteriors.R)
 <img src="parameter_posteriors.png" alt="main trajectories" width="60%">
 
 ---
+## Simulate nblA expression based on posterior parameters
+
+```r
+source(simulate_nblA_expression.r)
+```
+<img src="nbla_simulation_qssa.png" alt="main trajectories" width="60%">
+---
