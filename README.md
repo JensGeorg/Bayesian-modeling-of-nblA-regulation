@@ -234,3 +234,8 @@ fit <- model$sample(
 ```r
 source(trajectory_plot.R)
 ```
+<img src="trajectories_part1.png" alt="main trajectories" width="60%">
+---
+<img src="trajectories_part2.png" alt="other trajectories" width="60%">
+
+---
