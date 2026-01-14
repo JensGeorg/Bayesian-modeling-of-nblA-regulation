@@ -14,15 +14,12 @@ The Stan model (`qssa_model.stan`) implements a 3-state ODE system with an algeb
 
 **Key Mechanisms:**
 
-* 
 **QSSA:** The concentration of the sRNA-mRNA complex () is calculated algebraically at each step using the mass balance and dissociation constant (), assuming the binding dynamics are faster than transcription/decay.
 
 
-* 
 **Transcriptional Interference (TI):** The synthesis of the sense strand is suppressed by the synthesis flux of the antisense strand (and vice versa) using a logistic interference function.
 
 
-* 
 **Leak Synthesis:** Accounts for basal transcription distinct from the main regulated flux. Resembles the very low basic transcription that can be measured using RNAseq. Likely prematurely terminated RNA fragments.
 
 
@@ -232,16 +229,7 @@ fit <- model$sample(
 
 ---
 
-### Key Outputs
 
-The model generates posterior distributions for kinetic parameters and time-course trajectories:
-
-* 
-**Kinetic Parameters:** `Kd_sRNA` (Dissociation constant), `decay_R_free`, `decay_complex_sRNA`, `base_syn`.
-
-
-* 
-**Interference Parameters:** `term_rate_asR_on_RNA` (Efficiency of TI).
 
 
 * 
