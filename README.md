@@ -229,10 +229,8 @@ fit <- model$sample(
 
 ---
 
+## Plot posterior trajectories to data
 
-
-
-* 
-**Trajectories:** `RNA_wt_trajectory`, `RNA_asrna_ko_trajectory`.
-
-
+```r
+source(trajectory_plot.R)
+```
