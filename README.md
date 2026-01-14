@@ -239,3 +239,12 @@ source(trajectory_plot.R)
 <img src="trajectories_part2.png" alt="other trajectories" width="60%">
 
 ---
+
+## Plot and extract prameter posteriors 
+
+```r
+source(plot_and_extract_posteriors.R)
+```
+<img src="parameter_posteriors.png" alt="main trajectories" width="60%">
+
+---
